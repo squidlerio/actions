@@ -1,0 +1,55 @@
+# Ignore macOS directory files
+.DS_Store
+
+# Ignore Gradle project-specific cache directory
+.gradle
+
+# Ignore Gradle build output directory
+build
+.codesight
+.cursor
+.vscode
+.idea
+.terraform
+**/android/key.properties
+.run
+.jqwik-database
+
+app/frontend*
+
+# Allow users to have their own environment setup through "direnv" if they want.
+.envrc.local
+
+# Allow users to have their own environment files for each Gradle app.
+env.local
+
+# Local data stored when run in "local" mode is stored here
+local_data
+
+node_modules
+
+# Devenv
+.devenv*
+devenv.local.nix
+jte-classes
+
+# Direnv
+.direnv*
+
+# Python
+__pycache__
+
+# Kotlin cache
+.kotlin
+
+# Gatling recorder configuration
+**/recorder.conf
+
+# Vegeta bin file
+**/results.bin
+
+# Database dump files
+.db_dump
+
+#This is handled by devenv and will actually be a symlink.
+.pre-commit-config.yaml
