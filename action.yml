@@ -1,13 +1,165 @@
-name: 'Squidler Check Action'
-description: 'Performs a Squidler check on your project'
+name: 'Run Squidler Test'
+description: 'Runs the Squidler CLI test tool against a target URL.'
 author: 'Squidler'
+
+# Define Inputs for the Action
 inputs:
-  token:
-    description: 'Squidler API token'
+  target-url:
+    description: 'The starting URL for the Squidler test.'
     required: true
+  site-id:
+    description: 'The Squidler Site ID for associating results.'
+    required: true
+  api-key:
+    description: 'Your Squidler API Key (should usually be a secret).'
+    required: true
+  no-tunnel:
+    description: 'Disable local tunneling (recommended for public URLs).'
+    required: false
+    default: 'true' # Default to true as actions usually test public/staged sites
+  duration:
+    description: 'Duration of the test in seconds.'
+    required: false
+    default: '10' # Match CLI default
+  username:
+    description: 'Username for website login (optional).'
+    required: false
+  password:
+    description: 'Password for website login (optional).'
+    required: false
+  output-json:
+    description: 'Path on the runner to save the full JSON report (optional).'
+    required: false
+  output-md:
+    description: 'Path on the runner to save the Markdown summary report (optional).'
+    required: false
+  cli-version:
+    description: 'Specify a version of squidler-cli to use (e.g., latest, 0.1.0).'
+    required: false
+    default: 'latest' # Use latest by default
+  fail-on-problems:
+    description: 'Set to "true" to make the action fail if any problems are found.'
+    required: false
+    default: 'false' # Default is to pass if the run completes
+
+# Define Outputs for the Action
+outputs:
+  json-report-path:
+    description: "The absolute path to the generated JSON report, if requested."
+    value: ${{ steps.construct_cmd.outputs.json_path }}
+  md-report-path:
+    description: "The absolute path to the generated Markdown report, if requested."
+    value: ${{ steps.construct_cmd.outputs.md_path }}
+  problem-count:
+    description: "The total number of problems found in the report."
+    value: ${{ steps.parse_report.outputs.problem_count }}
+  exit-code:
+    description: "The raw exit code from the npx squidler-cli command."
+    value: ${{ steps.run_cli.outputs.exit_code }}
+
+
 runs:
-  using: 'docker'
-  image: 'Dockerfile'
+  using: "composite"
+  steps:
+    - name: Construct CLI Command
+      id: construct_cmd
+      shell: bash
+      run: |
+        # Start base command using npx and specified version
+        CMD="npx squidler-cli@${{ inputs.cli-version }} test ${{ inputs.target-url }}"
+        CMD+=" --apikey '${{ inputs.api-key }}'" # Use single quotes for safety
+        CMD+=" --siteid '${{ inputs.site-id }}'"
+
+        # Add optional flags only if inputs are provided
+        if [ "${{ inputs.no-tunnel }}" == "true" ]; then
+          CMD+=" --no-tunnel=true" # Be explicit
+        fi
+        if [ -n "${{ inputs.duration }}" ]; then
+          CMD+=" --duration ${{ inputs.duration }}"
+        fi
+        if [ -n "${{ inputs.username }}" ]; then
+          CMD+=" --username '${{ inputs.username }}'"
+        fi
+        if [ -n "${{ inputs.password }}" ]; then
+          CMD+=" --password '${{ inputs.password }}'"
+        fi
+
+        # Handle output files - store absolute paths for outputs
+        JSON_PATH=""
+        if [ -n "${{ inputs.output-json }}" ]; then
+          JSON_PATH="${{ github.workspace }}/${{ inputs.output-json }}"
+          CMD+=" --outputJson '${JSON_PATH}'" # Use camelCase flag
+        fi
+        echo "json_path=${JSON_PATH}" >> $GITHUB_OUTPUT
+
+        MD_PATH=""
+        if [ -n "${{ inputs.output-md }}" ]; then
+          MD_PATH="${{ github.workspace }}/${{ inputs.output-md }}"
+          CMD+=" --outputMd '${MD_PATH}'" # Use camelCase flag
+        fi
+        echo "md_path=${MD_PATH}" >> $GITHUB_OUTPUT
+
+        # Store the constructed command
+        echo "Constructed command: ${CMD}" # Log the command for debugging
+        echo "cmd=$CMD" >> $GITHUB_OUTPUT
+
+    - name: Run Squidler CLI
+      id: run_cli
+      shell: bash
+      run: |
+        # Run the command, capture exit code even if it fails
+        set +e # Don't exit immediately on error
+        ${{ steps.construct_cmd.outputs.cmd }}
+        EXIT_CODE=$?
+        set -e # Re-enable exit on error
+
+        # Output the raw exit code
+        echo "exit_code=${EXIT_CODE}" >> $GITHUB_OUTPUT
+
+        # Check if we should fail based on exit code *or* fail-on-problems flag
+        FINAL_EXIT_CODE=${EXIT_CODE}
+        JSON_REPORT_PATH="${{ steps.construct_cmd.outputs.json_path }}"
+        if [ "${{ inputs.fail-on-problems }}" == "true" ] && [ "${EXIT_CODE}" == "0" ] && [ -n "${JSON_REPORT_PATH}" ] && [ -f "${JSON_REPORT_PATH}" ]; then
+           # Check problem count if run succeeded and fail-on-problems is true
+           # Ensure jq is available or handle error
+           if command -v jq &> /dev/null; then
+             PROBLEM_COUNT=$(jq '.problems | length' "${JSON_REPORT_PATH}")
+             if [ "${PROBLEM_COUNT}" -gt "0" ]; then
+               echo "::error::Failing workflow because problems were found (${PROBLEM_COUNT}) and fail-on-problems is true."
+               FINAL_EXIT_CODE=1 # Override exit code to indicate failure
+             fi
+           else
+             echo "::warning::jq command not found. Cannot fail based on problem count."
+           fi
+        elif [ "${EXIT_CODE}" != "0" ]; then
+             echo "::error::Squidler CLI execution failed with exit code ${EXIT_CODE}."
+        fi
+
+        # Exit with the potentially overridden exit code
+        exit ${FINAL_EXIT_CODE}
+
+    - name: Parse Report for Outputs (Optional)
+      id: parse_report
+      # Check raw exit code and json_path before parsing
+      if: steps.run_cli.outputs.exit_code == 0 && steps.construct_cmd.outputs.json_path != '' 
+      shell: bash
+      run: |
+        # Requires jq to be installed on the runner (ubuntu-latest has it)
+        JSON_REPORT_PATH="${{ steps.construct_cmd.outputs.json_path }}"
+        if [ -f "${JSON_REPORT_PATH}" ]; then
+           if command -v jq &> /dev/null; then
+             PROBLEM_COUNT=$(jq '.problems | length' "${JSON_REPORT_PATH}")
+             echo "problem_count=${PROBLEM_COUNT}" >> $GITHUB_OUTPUT
+             echo "Parsed ${PROBLEM_COUNT} problems from report."
+           else
+             echo "problem_count=unknown" >> $GITHUB_OUTPUT
+             echo "::warning::jq command not found. Cannot parse problem count."
+           fi
+        else
+           echo "problem_count=0" >> $GITHUB_OUTPUT # Assume 0 if report doesn't exist but step ran
+           echo "JSON report file not found at ${JSON_REPORT_PATH}. Cannot parse problem count."
+        fi
+
 branding:
   icon: 'check-circle'
   color: 'blue'
