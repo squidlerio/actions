@@ -65,8 +65,8 @@ runs:
       id: construct_cmd
       shell: bash
       run: |
-        # Start base command using npx and specified version
-        CMD="npx squidler-cli@${{ inputs.cli-version }} test ${{ inputs.target-url }}"
+        # Use npx with the published scoped package name
+        CMD="npx @squidlerio/squidler-cli@${{ inputs.cli-version }} test ${{ inputs.target-url }}"
         CMD+=" --apikey '${{ inputs.api-key }}'" # Use single quotes for safety
         CMD+=" --siteid '${{ inputs.site-id }}'"
 
