@@ -51,8 +51,8 @@ runs:
       id: construct_cmd
       shell: bash
       run: |
-        # Base command with required args
-        CMD="npx @squidlerio/squidler-cli@${{ inputs.cli-version }} test ${{ inputs.target-url }}"
+        # Base command with required args using the new package name
+        CMD="npx @squidlerio/squidler-action-runner@${{ inputs.cli-version }} test ${{ inputs.target-url }}"
         CMD+=" --apikey '${{ inputs.api-key }}'"
         CMD+=" --siteid '${{ inputs.site-id }}'"
 
