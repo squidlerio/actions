@@ -28,11 +28,15 @@ inputs:
     description: 'Password for website login (optional).'
     required: false
   cli-version:
-    description: 'Specify a version of squidler-cli to use (e.g., latest, 0.1.0).'
+    description: 'Specify a version of squidler-action-runner to use (e.g., latest, 0.1.2).'
     required: false
-    default: 'latest'
+    default: '0.1.3'
   fail-on-problems:
     description: 'Make the action step fail if any problems are found by the CLI.'
+    required: false
+    default: 'false'
+  fail-on-new-problems:
+    description: 'Make the action step fail if any new problems are found by the CLI.'
     required: false
     default: 'false'
 
@@ -51,7 +55,7 @@ runs:
       id: construct_cmd
       shell: bash
       run: |
-        # Base command with required args using the new package name
+        # Base command with required args using the action runner package
         CMD="npx @squidlerio/squidler-action-runner@${{ inputs.cli-version }} test ${{ inputs.target-url }}"
         CMD+=" --apikey '${{ inputs.api-key }}'"
         CMD+=" --siteid '${{ inputs.site-id }}'"
@@ -62,6 +66,7 @@ runs:
         if [ -n "${{ inputs.username }}" ]; then CMD+=" --username '${{ inputs.username }}'"; fi
         if [ -n "${{ inputs.password }}" ]; then CMD+=" --password '${{ inputs.password }}'"; fi
         if [ "${{ inputs.fail-on-problems }}" == "true" ]; then CMD+=" --fail-on-problems"; fi
+        if [ "${{ inputs.fail-on-new-problems }}" == "true" ]; then CMD+=" --fail-on-new-problems"; fi
 
         echo "Constructed command: ${CMD}"
         echo "cmd=$CMD" >> $GITHUB_OUTPUT
