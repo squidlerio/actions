@@ -30,7 +30,7 @@ inputs:
   cli-version:
     description: 'Specify a version of squidler-action-runner to use (e.g., latest, 0.1.2).'
     required: false
-    default: '0.1.3'
+    default: '0.1.7'
   fail-on-problems:
     description: 'Make the action step fail if any problems are found by the CLI.'
     required: false
