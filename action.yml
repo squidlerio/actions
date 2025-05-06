@@ -1,36 +1,20 @@
 name: 'Run Squidler Test'
-description: 'Runs the Squidler CLI test tool against a target URL.'
+description: 'Runs the Squidler CLI test tool.'
 author: 'Squidler'
 
 # Define Inputs for the Action
 inputs:
-  target-url:
-    description: 'The starting URL for the Squidler test.'
-    required: true
-  site-id:
-    description: 'The Squidler Site ID for associating results.'
-    required: true
   api-key:
-    description: 'Your Squidler API Key (should usually be a secret).'
+    description: 'Your Squidler Site API Key (should usually be a secret).'
     required: true
-  no-tunnel:
-    description: 'Disable local tunneling (recommended for public URLs).'
-    required: false
-    default: 'true'
   duration:
     description: 'Duration of the test in seconds.'
     required: false
     default: '10'
-  username:
-    description: 'Username for website login (optional).'
-    required: false
-  password:
-    description: 'Password for website login (optional).'
-    required: false
   cli-version:
-    description: 'Specify a version of squidler-action-runner to use (e.g., latest, 0.1.2).'
+    description: 'Specify a version of squidler-action-runner to use (e.g., latest, 1.0.0).'
     required: false
-    default: '0.1.7'
+    default: '1.0.0'
   fail-on-problems:
     description: 'Make the action step fail if any problems are found by the CLI.'
     required: false
@@ -39,6 +23,12 @@ inputs:
     description: 'Make the action step fail if any new problems are found by the CLI.'
     required: false
     default: 'false'
+  suites:
+    description: 'Comma-separated list of test suites to run (e.g., Accessibility,Functionality,Language).'
+    required: false
+  include-recreations:
+    description: 'Include recreations in the test (default: true).'
+    required: false
 
 # Define Outputs for the Action
 outputs:
@@ -56,17 +46,20 @@ runs:
       shell: bash
       run: |
         # Base command with required args using the action runner package
-        CMD="npx @squidlerio/squidler-action-runner@${{ inputs.cli-version }} test ${{ inputs.target-url }}"
-        CMD+=" --apikey '${{ inputs.api-key }}'"
-        CMD+=" --siteid '${{ inputs.site-id }}'"
+        CMD="npx @squidlerio/squidler-action-runner@${{ inputs.cli-version }} test --apikey '${{ inputs.api-key }}'"
 
         # Add optional flags
-        if [ "${{ inputs.no-tunnel }}" == "true" ]; then CMD+=" --no-tunnel=true"; fi
         if [ -n "${{ inputs.duration }}" ]; then CMD+=" --duration ${{ inputs.duration }}"; fi
-        if [ -n "${{ inputs.username }}" ]; then CMD+=" --username '${{ inputs.username }}'"; fi
-        if [ -n "${{ inputs.password }}" ]; then CMD+=" --password '${{ inputs.password }}'"; fi
         if [ "${{ inputs.fail-on-problems }}" == "true" ]; then CMD+=" --fail-on-problems"; fi
         if [ "${{ inputs.fail-on-new-problems }}" == "true" ]; then CMD+=" --fail-on-new-problems"; fi
+        if [ -n "${{ inputs.suites }}" ]; then CMD+=" --suites ${{ inputs.suites }}"; fi
+        if [ -n "${{ inputs.include-recreations }}" ]; then
+          if [ "${{ inputs.include-recreations }}" == "false" ]; then
+            CMD+=" --no-include-recreations"
+          else
+            CMD+=" --include-recreations"
+          fi
+        fi
 
         echo "Constructed command: ${CMD}"
         echo "cmd=$CMD" >> $GITHUB_OUTPUT
