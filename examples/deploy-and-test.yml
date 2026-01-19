@@ -1,0 +1,107 @@
+# Advanced example: Deploy then test with Squidler
+#
+# This workflow shows how to:
+# 1. Deploy your application
+# 2. Wait for deployment to be live
+# 3. Run Squidler quality checks against the deployed site
+
+name: Deploy and Test
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    name: Deploy Application
+    runs-on: ubuntu-latest
+    outputs:
+      deployment-url: ${{ steps.deploy.outputs.url }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Example deployment step - replace with your actual deployment
+      - name: Deploy to production
+        id: deploy
+        run: |
+          echo "Deploying application..."
+          # Your deployment command here
+          # ./deploy.sh
+
+          # Set the deployed URL as output
+          echo "url=https://yoursite.com" >> $GITHUB_OUTPUT
+
+      # Wait for deployment to be actually live and responding
+      - name: Wait for deployment
+        run: |
+          URL="${{ steps.deploy.outputs.url }}"
+          echo "Waiting for deployment at $URL to be available..."
+
+          MAX_ATTEMPTS=30
+          SLEEP_TIME=10
+
+          for i in $(seq 1 $MAX_ATTEMPTS); do
+            echo "Attempt $i/$MAX_ATTEMPTS..."
+
+            # Check if the site responds with 200 OK
+            if curl -f -s -o /dev/null -w "%{http_code}" "$URL" | grep -q "^200$"; then
+              echo "✅ Deployment is live and responding!"
+              exit 0
+            fi
+
+            echo "Site not ready yet, waiting ${SLEEP_TIME}s..."
+            sleep $SLEEP_TIME
+          done
+
+          echo "❌ Deployment health check timeout after $((MAX_ATTEMPTS * SLEEP_TIME))s"
+          exit 1
+
+  test:
+    name: Run Quality Checks
+    runs-on: ubuntu-latest
+    needs: deploy
+
+    steps:
+      - name: Run Squidler Quality Checks
+        id: squidler
+        uses: squidlerio/actions@v1
+        with:
+          api-key: ${{ secrets.SQUIDLER_API_KEY }}
+          repository-id: ${{ github.repository_id }}
+          sha: ${{ github.sha }}
+          ref: ${{ github.ref }}
+
+      - name: Log results
+        run: |
+          echo "Squidler Status: ${{ steps.squidler.outputs.status }}"
+          echo "Message: ${{ steps.squidler.outputs.message }}"
+
+  notify:
+    name: Send Notification
+    runs-on: ubuntu-latest
+    needs: [deploy, test]
+    if: always()
+
+    steps:
+      - name: Send Slack notification
+        if: failure()
+        uses: slackapi/slack-github-action@v1
+        with:
+          payload: |
+            {
+              "text": "❌ Deployment or tests failed for ${{ github.repository }}",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*Deployment Failed*\n\nRepository: ${{ github.repository }}\nBranch: ${{ github.ref_name }}\nCommit: ${{ github.sha }}\n\n<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Workflow Run>"
+                  }
+                }
+              ]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
