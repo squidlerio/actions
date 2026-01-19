@@ -1,81 +1,109 @@
-name: 'Run Squidler Test'
-description: 'Runs the Squidler CLI test tool.'
+name: 'Squidler Quality Checks'
+description: 'Triggers Squidler quality checks for your site and reports results as GitHub check runs'
 author: 'Squidler'
 
 # Define Inputs for the Action
 inputs:
   api-key:
-    description: 'Your Squidler Site API Key (should usually be a secret).'
+    description: 'Your Squidler Site API Key (should be stored as a GitHub secret)'
     required: true
-  duration:
-    description: 'Duration of the test in seconds.'
+  api-url:
+    description: 'Squidler API URL'
     required: false
-    default: '10'
-  cli-version:
-    description: 'Specify a version of squidler-action-runner to use (e.g., latest, 1.0.0).'
-    required: false
-    default: '1.0.0'
-  fail-on-problems:
-    description: 'Make the action step fail if any problems are found by the CLI.'
-    required: false
-    default: 'false'
-  fail-on-new-problems:
-    description: 'Make the action step fail if any new problems are found by the CLI.'
-    required: false
-    default: 'false'
-  suites:
-    description: 'Comma-separated list of test suites to run (e.g., Accessibility,Functionality,Language).'
-    required: false
-  include-recreations:
-    description: 'Include recreations in the test (default: true).'
-    required: false
+    default: 'https://api.squidler.io'
+  repository-id:
+    description: 'GitHub repository ID (use ${{ github.repository_id }})'
+    required: true
+  sha:
+    description: 'Commit SHA (use ${{ github.sha }})'
+    required: true
+  ref:
+    description: 'Branch reference (use ${{ github.ref }})'
+    required: true
 
 # Define Outputs for the Action
 outputs:
-  problem-count:
-    description: "The total number of problems found in the report (set by CLI)."
-  exit-code:
-    description: "The raw exit code from the squidler-cli script."
-    value: ${{ steps.run_cli.outputs.exit_code }}
+  status:
+    description: "Status of the test trigger (success/failure)"
+    value: ${{ steps.trigger.outputs.status }}
+  message:
+    description: "Response message from Squidler API"
+    value: ${{ steps.trigger.outputs.message }}
 
 runs:
   using: "composite"
   steps:
-    - name: Construct CLI Command
-      id: construct_cmd
+    - name: Trigger Squidler Quality Checks
+      id: trigger
       shell: bash
       run: |
-        # Base command with required args using the action runner package
-        CMD="npx @squidlerio/squidler-action-runner@${{ inputs.cli-version }} test --apikey '${{ inputs.api-key }}'"
+        set -e
 
-        # Add optional flags
-        if [ -n "${{ inputs.duration }}" ]; then CMD+=" --duration ${{ inputs.duration }}"; fi
-        if [ "${{ inputs.fail-on-problems }}" == "true" ]; then CMD+=" --fail-on-problems"; fi
-        if [ "${{ inputs.fail-on-new-problems }}" == "true" ]; then CMD+=" --fail-on-new-problems"; fi
-        if [ -n "${{ inputs.suites }}" ]; then CMD+=" --suites ${{ inputs.suites }}"; fi
-        if [ -n "${{ inputs.include-recreations }}" ]; then
-          if [ "${{ inputs.include-recreations }}" == "false" ]; then
-            CMD+=" --no-include-recreations"
-          else
-            CMD+=" --include-recreations"
-          fi
+        echo "::group::Squidler Quality Checks"
+        echo "Repository ID: ${{ inputs.repository-id }}"
+        echo "Commit SHA: ${{ inputs.sha }}"
+        echo "Branch: ${{ inputs.ref }}"
+        echo "API URL: ${{ inputs.api-url }}"
+        echo "::endgroup::"
+
+        # Make the API request
+        response=$(curl -s -w "\n%{http_code}" -X POST "${{ inputs.api-url }}/api/github/run-checks" \
+          -H "Authorization: Bearer ${{ inputs.api-key }}" \
+          -H "Content-Type: application/json" \
+          -d '{
+            "repositoryId": "${{ inputs.repository-id }}",
+            "sha": "${{ inputs.sha }}",
+            "ref": "${{ inputs.ref }}"
+          }')
+
+        # Extract HTTP status code (last line)
+        http_code=$(echo "$response" | tail -n 1)
+        # Extract body (all but last line)
+        body=$(echo "$response" | sed '$d')
+
+        echo "::group::API Response"
+        echo "HTTP Status: $http_code"
+        echo "Response Body: $body"
+        echo "::endgroup::"
+
+        # Parse the response message if available
+        message=$(echo "$body" | grep -o '"message":"[^"]*"' | cut -d'"' -f4 || echo "No message in response")
+
+        # Check if request was successful (202 Accepted)
+        if [ "$http_code" -eq 202 ]; then
+          echo "status=success" >> $GITHUB_OUTPUT
+          echo "message=$message" >> $GITHUB_OUTPUT
+          echo "✅ Successfully triggered Squidler quality checks"
+          echo "📊 $message"
+          echo ""
+          echo "💡 Results will appear as check runs in the GitHub UI"
+          exit 0
+        # Handle client errors (4xx)
+        elif [ "$http_code" -ge 400 ] && [ "$http_code" -lt 500 ]; then
+          echo "status=failure" >> $GITHUB_OUTPUT
+          echo "message=$message" >> $GITHUB_OUTPUT
+          echo "::error::Failed to trigger Squidler checks (HTTP $http_code): $message"
+          echo ""
+          echo "Common issues:"
+          echo "  - Repository not linked to a Squidler site"
+          echo "  - No labels configured for this repository"
+          echo "  - No test cases found with the configured labels"
+          echo "  - Invalid API key or insufficient permissions"
+          exit 1
+        # Handle server errors (5xx)
+        elif [ "$http_code" -ge 500 ]; then
+          echo "status=failure" >> $GITHUB_OUTPUT
+          echo "message=Server error (HTTP $http_code)" >> $GITHUB_OUTPUT
+          echo "::error::Squidler API server error (HTTP $http_code)"
+          echo "Please try again later or contact support if the issue persists"
+          exit 1
+        # Handle unexpected status codes
+        else
+          echo "status=failure" >> $GITHUB_OUTPUT
+          echo "message=Unexpected response (HTTP $http_code)" >> $GITHUB_OUTPUT
+          echo "::error::Unexpected response from Squidler API (HTTP $http_code)"
+          exit 1
         fi
-
-        echo "Constructed command: ${CMD}"
-        echo "cmd=$CMD" >> $GITHUB_OUTPUT
-
-    - name: Run Squidler CLI
-      id: run_cli
-      shell: bash
-      run: |
-        # Run the command. CLI handles outputs/summary internally when in Actions.
-        # CLI exits with non-zero code if --fail-on-problems=true and problems exist.
-        ${{ steps.construct_cmd.outputs.cmd }}
-        EXIT_CODE=$?
-        # Output the raw exit code for the action's output
-        echo "exit_code=${EXIT_CODE}" >> $GITHUB_OUTPUT
-        # Exit the step with the script's exit code
-        exit ${EXIT_CODE}
 
 branding:
   icon: 'check-circle'
