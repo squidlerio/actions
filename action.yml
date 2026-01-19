@@ -12,13 +12,13 @@ inputs:
     required: false
     default: 'https://api.squidler.io'
   repository-id:
-    description: 'GitHub repository ID (use ${{ github.repository_id }})'
+    description: 'GitHub repository ID'
     required: true
   sha:
-    description: 'Commit SHA (use ${{ github.sha }})'
+    description: 'Commit SHA'
     required: true
   ref:
-    description: 'Branch reference (use ${{ github.ref }})'
+    description: 'Branch reference'
     required: true
 
 # Define Outputs for the Action
