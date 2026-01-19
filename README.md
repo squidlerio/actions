@@ -27,6 +27,8 @@ Before using this action, you need to:
 
 ## Usage
 
+See the [examples/](examples/) directory for complete workflow examples.
+
 ### Basic Example
 
 ```yaml
