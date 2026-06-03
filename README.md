@@ -1,6 +1,6 @@
 # Squidler GitHub Actions
 
-A collection of GitHub Actions for running [Squidler](https://squidler.io) website quality and accessibility checks from your CI/CD pipelines.
+A collection of GitHub Actions for running [Squidler](https://qa.squidler.io) website quality and accessibility checks from your CI/CD pipelines.
 
 This repository hosts several actions, each in its own subdirectory and referenced with a path suffix:
 
@@ -45,7 +45,7 @@ Actions are released together under a single set of tags. Pin to a major tag (`@
 
 ## Support
 
-- 📖 **Documentation**: <https://squidler.io/docs>
+- 📖 **Documentation**: <https://qa.squidler.io/docs>
 - 💬 **Support**: support@squidler.io
 - 🐛 **Issues**: [GitHub Issues](https://github.com/squidlerio/actions/issues)
 

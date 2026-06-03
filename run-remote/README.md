@@ -29,7 +29,7 @@ Before using this action, you need to:
 
 ## Usage
 
-See the [examples/](examples/) directory for complete workflow examples.
+See the [examples/](examples) directory for complete workflow examples.
 
 ### Basic Example
 
@@ -211,10 +211,10 @@ The API key is invalid or has been revoked:
 
 ## Support
 
-- 📖 **Documentation**: [https://squidler.io/docs](https://squidler.io/docs)
+- 📖 **Documentation**: [https://qa.squidler.io/docs](https://qa.squidler.io/docs)
 - 💬 **Support**: support@squidler.io
 - 🐛 **Issues**: [GitHub Issues](https://github.com/squidlerio/actions/issues)
 
 ## License
 
-MIT License - see [LICENSE](LICENSE) file for details
+MIT License - see [LICENSE](../LICENSE) file for details

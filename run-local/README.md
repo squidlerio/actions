@@ -24,7 +24,7 @@ The minimal version above runs every `*.md` test case under `squidler/` against 
 | ----------------- | -------- | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `test-path`       | yes      |                           | A `.md` file or a directory of them. Directories are walked recursively for `*.md`.                                                                          |
 | `base-url`        | yes      |                           | The URL the run targets. Anything the runner can reach: a localhost dev server brought up earlier in the job, a preview deploy URL, staging, or production. |
-| `api-key`         | yes      |                           | Squidler organisation API key (`sqo…`). Use a GitHub secret — `secrets.SQUIDLER_API_KEY`. Get one at <https://squidler.io/integrations/api-keys>.            |
+| `api-key`         | yes      |                           | Squidler organisation API key (`sqo…`). Use a GitHub secret — `secrets.SQUIDLER_API_KEY`. Get one at <https://qa.squidler.io/integrations/api-keys>.            |
 | `concurrency`     | no       | `4`                       | Max parallel runs across the batch. Standalone runs don't queue server-side, so the CLI owns parallelism. Drop to `1` for serial.                            |
 | `format`          | no       | `github`                  | Report format: `github` (workflow annotations), `junit` (JUnit XML, pair with `output:`), `tap` (Test Anything Protocol), or `human` (plain stdout).         |
 | `output`          | no       | _stdout_                  | Write the formatted report to this path instead of stdout. Typical pairing: `format: junit` + `output: junit.xml`.                                            |
@@ -126,8 +126,8 @@ labels:
 
 ## Requirements
 
-- A Squidler organisation API key. Get one at <https://squidler.io/integrations/api-keys> — store it as a GitHub secret.
-- Test cases as `.md` files in your repository. The MCP server's `test_case_create_standalone` tool generates these via a guided conversation; you can also write them by hand. See the [test-case authoring guide](https://squidler.io/docs/llm/standalone-runs) for the markdown format.
+- A Squidler organisation API key. Get one at <https://qa.squidler.io/integrations/api-keys> — store it as a GitHub secret.
+- Test cases as `.md` files in your repository. The MCP server's `test_case_create_standalone` tool generates these via a guided conversation; you can also write them by hand. See the [test-case authoring guide](https://qa.squidler.io/docs/llm/standalone-runs) for the markdown format.
 - A reachable `base-url`. For local dev servers this is whatever port your `pnpm dev` / `npm start` / etc. binds — the action handles the cloud-to-localhost bridging via a local Chrome.
 
 ## How it works
