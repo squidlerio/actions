@@ -67,7 +67,7 @@ jobs:
     steps:
       - name: Run Squidler Quality Checks
         id: squidler
-        uses: squidlerio/actions@v1
+        uses: squidlerio/actions/run-remote@v4
         with:
           api-key: ${{ secrets.SQUIDLER_API_KEY }}
           repository-id: ${{ github.repository_id }}

@@ -1,109 +1,17 @@
-name: 'Squidler Quality Checks'
-description: 'Triggers Squidler quality checks for your site and reports results as GitHub check runs'
-author: 'Squidler'
+name: 'Squidler'
+description: 'A collection of actions for running Squidler website quality and accessibility checks.'
 
-# Define Inputs for the Action
-inputs:
-  api-key:
-    description: 'Your Squidler Site API Key (should be stored as a GitHub secret)'
-    required: true
-  api-url:
-    description: 'Squidler API URL'
-    required: false
-    default: 'https://api.squidler.io'
-  repository-id:
-    description: 'GitHub repository ID'
-    required: true
-  sha:
-    description: 'Commit SHA'
-    required: true
-  ref:
-    description: 'Branch reference'
-    required: true
-
-# Define Outputs for the Action
-outputs:
-  status:
-    description: "Status of the test trigger (success/failure)"
-    value: ${{ steps.trigger.outputs.status }}
-  message:
-    description: "Response message from Squidler API"
-    value: ${{ steps.trigger.outputs.message }}
-
+# This repository hosts several actions, each in its own subdirectory. The bare
+# repository path is not itself a usable action — referencing it fails fast with
+# a pointer to the real sub-actions. (Up to and including v3 the quality-checks
+# action lived at this root; it now lives at `run-remote`.)
 runs:
-  using: "composite"
+  using: 'composite'
   steps:
-    - name: Trigger Squidler Quality Checks
-      id: trigger
+    - run: |
+        echo "::error::The path 'squidlerio/actions' is not a valid action. Please use 'squidlerio/actions/run-remote' (the quality-checks action formerly published as 'squidlerio/actions@v3') or 'squidlerio/actions/run-local'."
+        exit 1
       shell: bash
-      run: |
-        set -e
-
-        echo "::group::Squidler Quality Checks"
-        echo "Repository ID: ${{ inputs.repository-id }}"
-        echo "Commit SHA: ${{ inputs.sha }}"
-        echo "Branch: ${{ inputs.ref }}"
-        echo "API URL: ${{ inputs.api-url }}"
-        echo "::endgroup::"
-
-        # Make the API request
-        response=$(curl -s -w "\n%{http_code}" -X POST "${{ inputs.api-url }}/api/github/run-checks" \
-          -H "Authorization: Bearer ${{ inputs.api-key }}" \
-          -H "Content-Type: application/json" \
-          -d '{
-            "repositoryId": "${{ inputs.repository-id }}",
-            "sha": "${{ inputs.sha }}",
-            "ref": "${{ inputs.ref }}"
-          }')
-
-        # Extract HTTP status code (last line)
-        http_code=$(echo "$response" | tail -n 1)
-        # Extract body (all but last line)
-        body=$(echo "$response" | sed '$d')
-
-        echo "::group::API Response"
-        echo "HTTP Status: $http_code"
-        echo "Response Body: $body"
-        echo "::endgroup::"
-
-        # Parse the response message if available
-        message=$(echo "$body" | grep -o '"message":"[^"]*"' | cut -d'"' -f4 || echo "No message in response")
-
-        # Check if request was successful (202 Accepted)
-        if [ "$http_code" -eq 202 ]; then
-          echo "status=success" >> $GITHUB_OUTPUT
-          echo "message=$message" >> $GITHUB_OUTPUT
-          echo "✅ Successfully triggered Squidler quality checks"
-          echo "📊 $message"
-          echo ""
-          echo "💡 Results will appear as check runs in the GitHub UI"
-          exit 0
-        # Handle client errors (4xx)
-        elif [ "$http_code" -ge 400 ] && [ "$http_code" -lt 500 ]; then
-          echo "status=failure" >> $GITHUB_OUTPUT
-          echo "message=$message" >> $GITHUB_OUTPUT
-          echo "::error::Failed to trigger Squidler checks (HTTP $http_code): $message"
-          echo ""
-          echo "Common issues:"
-          echo "  - Repository not linked to a Squidler site"
-          echo "  - No labels configured for this repository"
-          echo "  - No test cases found with the configured labels"
-          echo "  - Invalid API key or insufficient permissions"
-          exit 1
-        # Handle server errors (5xx)
-        elif [ "$http_code" -ge 500 ]; then
-          echo "status=failure" >> $GITHUB_OUTPUT
-          echo "message=Server error (HTTP $http_code)" >> $GITHUB_OUTPUT
-          echo "::error::Squidler API server error (HTTP $http_code)"
-          echo "Please try again later or contact support if the issue persists"
-          exit 1
-        # Handle unexpected status codes
-        else
-          echo "status=failure" >> $GITHUB_OUTPUT
-          echo "message=Unexpected response (HTTP $http_code)" >> $GITHUB_OUTPUT
-          echo "::error::Unexpected response from Squidler API (HTTP $http_code)"
-          exit 1
-        fi
 
 branding:
   icon: 'check-circle'

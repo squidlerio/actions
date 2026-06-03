@@ -1,0 +1,7 @@
+{
+  "name": "@squidlerio/cli",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Vendored, self-contained bundle of @squidlerio/cli used by the run-local action. Generated — do not edit by hand. See README.md."
+}

@@ -1,0 +1,110 @@
+name: 'Squidler Local Run'
+description: |
+  Run Squidler standalone test cases against a URL reachable from the workflow
+  runner — a localhost dev server brought up earlier in the same job, or a
+  private preview-deploy URL — and fail the workflow if a test fails.
+
+  Use cases:
+    - Test a dev server spun up earlier in the same job.
+    - Run a stable preview-deploy URL through a curated suite of standalone
+      test cases as part of PR CI.
+
+  Defaults to --format github so failures surface as inline PR annotations.
+  Override with `format` for JUnit XML (the GH Actions test-reporter family) or
+  TAP (piping into a Node-ecosystem aggregator).
+
+  Self-contained: the action runs a pre-bundled Squidler CLI shipped alongside
+  it (run-local/cli), so there is no install or build step and no assumption
+  about the consuming repository's layout.
+author: 'Squidler'
+
+inputs:
+  test-path:
+    description: 'Path to a `.md` standalone-run file OR a directory tree of them. Directories are walked recursively for `*.md`.'
+    required: true
+  concurrency:
+    description: 'Max parallel runs across the batch. Default 4. Standalone runs do not queue server-side; the CLI owns parallelism.'
+    required: false
+    default: '4'
+  base-url:
+    description: 'Base URL the test runs against. Typically a localhost dev server or a preview-deploy URL reachable from the runner.'
+    required: true
+  api-key:
+    description: 'Squidler organization API key (`sqo…`). Use a GitHub secret.'
+    required: true
+  api-url:
+    description: 'Squidler API base URL.'
+    required: false
+    default: 'https://api.squidler.io'
+  format:
+    description: 'Report format: human, junit, tap, or github (workflow annotations).'
+    required: false
+    default: 'github'
+  output:
+    description: 'If set, write the formatted report to this path (relative to the workspace).'
+    required: false
+    default: ''
+  no-local-chrome:
+    description: 'When `true`, skip launching a local Chrome and let the cloud worker drive its own browser. Only works for publicly-reachable URLs.'
+    required: false
+    default: 'false'
+  exclude-labels:
+    description: 'Comma-separated frontmatter labels to skip. Use for tests that need state the CI environment can''t provide (e.g. `requires-credentials` when there''s no seeded user).'
+    required: false
+    default: ''
+  poll-timeout-ms:
+    description: 'How long to wait for the run to terminate before erroring out.'
+    required: false
+    default: '600000'
+  node-version:
+    description: 'Node.js version used to run the bundled CLI. The bundle targets Node 20+.'
+    required: false
+    default: '24'
+
+outputs:
+  exit-code:
+    description: 'Exit code from the CLI: 0 every test PASSED, 1 any test FAILED/ERRORED, 2 any test poll-timeout, 3 Chrome/daemon setup failed.'
+    value: ${{ steps.run.outputs.exit-code }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Set up Node.js
+      uses: actions/setup-node@v6
+      with:
+        node-version: ${{ inputs.node-version }}
+
+    - name: Run Squidler test cases
+      id: run
+      shell: bash
+      env:
+        SQUIDLER_API_URL: ${{ inputs.api-url }}
+        SQUIDLER_API_KEY: ${{ inputs.api-key }}
+      run: |
+        set +e
+
+        args=(
+          run "${{ inputs.test-path }}"
+          --base-url "${{ inputs.base-url }}"
+          --concurrency "${{ inputs.concurrency }}"
+          --format "${{ inputs.format }}"
+          --poll-timeout "${{ inputs.poll-timeout-ms }}"
+        )
+        if [ -n "${{ inputs.output }}" ]; then
+          args+=(--output "${{ inputs.output }}")
+        fi
+        if [ "${{ inputs.no-local-chrome }}" = "true" ]; then
+          args+=(--no-local-chrome)
+        fi
+        if [ -n "${{ inputs.exclude-labels }}" ]; then
+          args+=(--exclude-labels "${{ inputs.exclude-labels }}")
+        fi
+
+        node "$GITHUB_ACTION_PATH/cli/dist/index.js" "${args[@]}"
+        code=$?
+        echo "exit-code=$code" >> "$GITHUB_OUTPUT"
+        exit $code
+
+branding:
+  icon: 'check-circle'
+  color: 'blue'
