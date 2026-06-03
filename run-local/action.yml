@@ -77,27 +77,38 @@ runs:
     - name: Run Squidler test cases
       id: run
       shell: bash
+      # Inputs are bound to environment variables rather than interpolated
+      # directly into the script, so a value containing shell metacharacters
+      # cannot execute on the runner.
       env:
         SQUIDLER_API_URL: ${{ inputs.api-url }}
         SQUIDLER_API_KEY: ${{ inputs.api-key }}
+        INPUT_TEST_PATH: ${{ inputs.test-path }}
+        INPUT_BASE_URL: ${{ inputs.base-url }}
+        INPUT_CONCURRENCY: ${{ inputs.concurrency }}
+        INPUT_FORMAT: ${{ inputs.format }}
+        INPUT_POLL_TIMEOUT_MS: ${{ inputs.poll-timeout-ms }}
+        INPUT_OUTPUT: ${{ inputs.output }}
+        INPUT_NO_LOCAL_CHROME: ${{ inputs.no-local-chrome }}
+        INPUT_EXCLUDE_LABELS: ${{ inputs.exclude-labels }}
       run: |
         set +e
 
         args=(
-          run "${{ inputs.test-path }}"
-          --base-url "${{ inputs.base-url }}"
-          --concurrency "${{ inputs.concurrency }}"
-          --format "${{ inputs.format }}"
-          --poll-timeout "${{ inputs.poll-timeout-ms }}"
+          run "$INPUT_TEST_PATH"
+          --base-url "$INPUT_BASE_URL"
+          --concurrency "$INPUT_CONCURRENCY"
+          --format "$INPUT_FORMAT"
+          --poll-timeout "$INPUT_POLL_TIMEOUT_MS"
         )
-        if [ -n "${{ inputs.output }}" ]; then
-          args+=(--output "${{ inputs.output }}")
+        if [ -n "$INPUT_OUTPUT" ]; then
+          args+=(--output "$INPUT_OUTPUT")
         fi
-        if [ "${{ inputs.no-local-chrome }}" = "true" ]; then
+        if [ "$INPUT_NO_LOCAL_CHROME" = "true" ]; then
           args+=(--no-local-chrome)
         fi
-        if [ -n "${{ inputs.exclude-labels }}" ]; then
-          args+=(--exclude-labels "${{ inputs.exclude-labels }}")
+        if [ -n "$INPUT_EXCLUDE_LABELS" ]; then
+          args+=(--exclude-labels "$INPUT_EXCLUDE_LABELS")
         fi
 
         node "$GITHUB_ACTION_PATH/cli/dist/index.js" "${args[@]}"

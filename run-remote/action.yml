@@ -36,25 +36,36 @@ runs:
     - name: Trigger Squidler Quality Checks
       id: trigger
       shell: bash
+      # Inputs are bound to environment variables rather than interpolated
+      # directly into the script, so a value containing shell metacharacters
+      # cannot execute on the runner.
+      env:
+        INPUT_API_URL: ${{ inputs.api-url }}
+        INPUT_API_KEY: ${{ inputs.api-key }}
+        INPUT_REPOSITORY_ID: ${{ inputs.repository-id }}
+        INPUT_SHA: ${{ inputs.sha }}
+        INPUT_REF: ${{ inputs.ref }}
       run: |
         set -e
 
         echo "::group::Squidler Quality Checks"
-        echo "Repository ID: ${{ inputs.repository-id }}"
-        echo "Commit SHA: ${{ inputs.sha }}"
-        echo "Branch: ${{ inputs.ref }}"
-        echo "API URL: ${{ inputs.api-url }}"
+        echo "Repository ID: $INPUT_REPOSITORY_ID"
+        echo "Commit SHA: $INPUT_SHA"
+        echo "Branch: $INPUT_REF"
+        echo "API URL: $INPUT_API_URL"
         echo "::endgroup::"
 
+        # Build the JSON body from the environment. git refnames, SHAs and
+        # numeric repository ids cannot contain JSON metacharacters, so
+        # printf %s yields a well-formed body without a shell eval.
+        payload=$(printf '{"repositoryId":"%s","sha":"%s","ref":"%s"}' \
+          "$INPUT_REPOSITORY_ID" "$INPUT_SHA" "$INPUT_REF")
+
         # Make the API request
-        response=$(curl -s -w "\n%{http_code}" -X POST "${{ inputs.api-url }}/api/github/run-checks" \
-          -H "Authorization: Bearer ${{ inputs.api-key }}" \
+        response=$(curl -s -w "\n%{http_code}" -X POST "$INPUT_API_URL/api/github/run-checks" \
+          -H "Authorization: Bearer $INPUT_API_KEY" \
           -H "Content-Type: application/json" \
-          -d '{
-            "repositoryId": "${{ inputs.repository-id }}",
-            "sha": "${{ inputs.sha }}",
-            "ref": "${{ inputs.ref }}"
-          }')
+          -d "$payload")
 
         # Extract HTTP status code (last line)
         http_code=$(echo "$response" | tail -n 1)
