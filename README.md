@@ -1,3 +1,9 @@
+<p align="center">
+  <a href="https://qa.squidler.io">
+    <img src="assets/squidler-logo.svg" alt="Squidler" width="300">
+  </a>
+</p>
+
 # Squidler GitHub Actions
 
 A collection of GitHub Actions for running [Squidler](https://qa.squidler.io) website quality and accessibility checks from your CI/CD pipelines.
@@ -37,7 +43,7 @@ This repository hosts several actions, each in its own subdirectory and referenc
     ref: ${{ github.ref }}
 ```
 
-See each action's README [`run-local`](run-local)), ([`run-remote`](run-remote) for the full input/output reference and worked examples.
+See each action's README ([`run-local`](run-local), [`run-remote`](run-remote)) for the full input/output reference and worked examples.
 
 ## Versioning
 
