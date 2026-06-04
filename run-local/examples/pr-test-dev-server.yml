@@ -1,0 +1,69 @@
+# Run your Squidler test cases against the pull request's code.
+#
+# This is the headline use case: the job brings up your app's dev
+# server on the runner, then the run-local action launches a local
+# Chrome and lets Squidler drive the app through it. That bridging is
+# what makes http://localhost:* work — no tunnels, no port-forwarding,
+# and the dev server never leaves the runner; only test verdicts come
+# back. A broken flow is caught in the PR, before it merges.
+#
+# Copy this file to .github/workflows/ in your repository and adapt the
+# "Bring up the dev server" step to however your app starts.
+
+name: Squidler PR smoke
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  squidler:
+    name: Run Squidler test cases
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+
+      # Replace with your app's own start command. Background it and
+      # capture the log so a red run is easy to debug.
+      - name: Bring up the dev server
+        run: |
+          npm ci
+          npm run dev > /tmp/dev-server.log 2>&1 &
+
+      # Don't start testing until the app actually answers.
+      - name: Wait for the dev server
+        run: npx --yes wait-on --timeout 120000 http-get://localhost:3000
+
+      - name: Run Squidler test cases
+        uses: squidlerio/actions/run-local@v4
+        with:
+          # A single .md file or a directory; directories are walked
+          # recursively for *.md test cases.
+          test-path: squidler/
+          base-url: http://localhost:3000
+          # Organisation API key (`sqo…`) — create one at
+          # https://qa.squidler.io/integrations/api-keys and store it
+          # as a repository secret.
+          api-key: ${{ secrets.SQUIDLER_API_KEY }}
+          # The default format (`github`) annotates failures on the
+          # test case's file and line, and writes a per-test summary
+          # table to the job summary — nothing else to configure.
+          #
+          # A fresh CI environment often has no seeded user to log in
+          # with. Tag such test cases in their frontmatter (labels:
+          # [requires-credentials]) and skip them here:
+          # exclude-labels: requires-credentials
+
+      - name: Upload dev server log
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: dev-server-log
+          path: /tmp/dev-server.log

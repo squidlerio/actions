@@ -1,0 +1,43 @@
+# Deploy a preview, then run your Squidler test cases against it.
+#
+# For platforms that give every pull request its own preview URL
+# (Vercel, Netlify, Render, …). The preview is publicly reachable, so
+# Squidler's cloud worker browses it directly — no runner-local Chrome
+# needed, which makes this the lightest-weight setup.
+
+name: Squidler preview-deploy test
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  squidler:
+    name: Test the preview deploy
+    runs-on: ubuntu-latest
+
+    steps:
+      # Needed for the test case .md files (and for your deploy step,
+      # if it builds from source).
+      - uses: actions/checkout@v6
+
+      # Replace with your real deploy step — it just needs to expose
+      # the preview URL as a step output. Many deploy actions
+      # (amondnet/vercel-action, nwtgck/actions-netlify, …) already do.
+      - name: Deploy preview
+        id: preview
+        run: |
+          # ./deploy-preview.sh
+          echo "url=https://pr-123.preview.example.com" >> "$GITHUB_OUTPUT"
+
+      - name: Run Squidler test cases against the preview
+        uses: squidlerio/actions/run-local@v4
+        with:
+          test-path: squidler/
+          base-url: ${{ steps.preview.outputs.url }}
+          api-key: ${{ secrets.SQUIDLER_API_KEY }}
+          # Publicly reachable URL → let the cloud worker drive its own
+          # browser instead of launching Chrome on the runner.
+          no-local-chrome: 'true'

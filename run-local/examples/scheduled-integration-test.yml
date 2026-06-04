@@ -1,0 +1,54 @@
+# Run your Squidler test cases against a live environment on a
+# schedule.
+#
+# Same test cases as your PR workflow — only the trigger and the URL
+# change. If a critical flow breaks overnight (a third-party script
+# changed, a dependency rotated, certificates expired), you find out
+# from a red run in the morning instead of from a customer.
+
+name: Squidler nightly integration test
+
+on:
+  schedule:
+    # 03:17 UTC nightly. Pick an odd minute — GitHub delays jobs
+    # scheduled at busy round times.
+    - cron: '17 3 * * *'
+  # Allow manual runs too, e.g. right before a release.
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  squidler:
+    name: Run Squidler test cases against staging
+    runs-on: ubuntu-latest
+
+    steps:
+      # The test case .md files are read from the repository, so the
+      # checkout is needed even though the app itself isn't built here.
+      - uses: actions/checkout@v6
+
+      - name: Run Squidler test cases
+        uses: squidlerio/actions/run-local@v4
+        with:
+          # Run a curated subset on the nightly — your most important
+          # flows, not necessarily the whole suite.
+          test-path: squidler/critical-paths/
+          base-url: https://staging.example.com
+          api-key: ${{ secrets.SQUIDLER_API_KEY }}
+          # The target is publicly reachable, so skip the runner-local
+          # Chrome and let Squidler's cloud worker use its own browser.
+          no-local-chrome: 'true'
+          # JUnit XML pairs well with test-report dashboards; upload it
+          # as an artifact below.
+          format: junit
+          output: junit.xml
+
+      - name: Upload JUnit report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: squidler-junit
+          path: junit.xml
+          if-no-files-found: ignore

@@ -18,6 +18,8 @@ Test cases are markdown files in your repository. Squidler executes them against
 
 The minimal version above runs every `*.md` test case under `squidler/` against the supplied URL. Defaults: `concurrency: 4`, `format: github` (so failures appear as inline PR annotations).
 
+See the [examples/](examples) directory for complete, copy-pasteable workflows: [test the PR's code on a runner-local dev server](examples/pr-test-dev-server.yml), [a nightly integration test against staging](examples/scheduled-integration-test.yml), and [testing a preview deploy](examples/preview-deploy.yml). [examples/squidler/](examples/squidler) holds three minimal test cases to seed your own `squidler/` directory from: a [homepage smoke test](examples/squidler/homepage-loads.md), a [navigation click-through](examples/squidler/navigation-works.md), and a [login-gated test](examples/squidler/logged-in-area.md) demonstrating the `requires-credentials` label.
+
 ## Inputs
 
 | Name              | Required | Default                   | Description                                                                                                                                                  |
@@ -95,7 +97,7 @@ Pair `format: junit` with `output:` so a downstream test-reporter step can pick 
     format: junit
     output: junit.xml
 
-- uses: actions/upload-artifact@v4
+- uses: actions/upload-artifact@v7
   if: always()
   with:
     name: squidler-junit
@@ -127,7 +129,7 @@ labels:
 ## Requirements
 
 - A Squidler organisation API key. Get one at <https://qa.squidler.io/integrations/api-keys> — store it as a GitHub secret.
-- Test cases as `.md` files in your repository. The MCP server's `test_case_create_standalone` tool generates these via a guided conversation; you can also write them by hand. See the [test-case authoring guide](https://qa.squidler.io/docs/llm/standalone-runs) for the markdown format.
+- Test cases as `.md` files in your repository. The MCP server's `test_case_create_standalone` tool generates these via a guided conversation; you can also write them by hand — start from the minimal ones in [examples/squidler/](examples/squidler). See the [test-case authoring guide](https://qa.squidler.io/docs/llm/standalone-runs) for the markdown format.
 - A reachable `base-url`. For local dev servers this is whatever port your `pnpm dev` / `npm start` / etc. binds — the action handles the cloud-to-localhost bridging via a local Chrome.
 
 ## How it works
