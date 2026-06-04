@@ -1,4 +1,4 @@
-name: 'Squidler Quality Checks'
+name: 'Squidler Checks Trigger'
 description: 'Triggers Squidler quality checks for your site and reports results as GitHub check runs'
 author: 'Squidler'
 

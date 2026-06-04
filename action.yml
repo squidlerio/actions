@@ -1,5 +1,5 @@
-name: 'Squidler'
-description: 'A collection of actions for running Squidler website quality and accessibility checks.'
+name: 'Autonomous natural language tests with Squidler'
+description: 'A collection of actions for running Squidler website quality and accessibility checks, using natural language tests.'
 
 # This repository hosts several actions, each in its own subdirectory. The bare
 # repository path is not itself a usable action — referencing it fails fast with
@@ -9,7 +9,7 @@ runs:
   using: 'composite'
   steps:
     - run: |
-        echo "::error::The path 'squidlerio/actions' is not a valid action. Please use 'squidlerio/actions/run-remote' (the quality-checks action formerly published as 'squidlerio/actions@v3') or 'squidlerio/actions/run-local'."
+        echo "::error::The path 'squidlerio/actions' is not a valid action. Please use 'squidlerio/actions/run-local' or 'squidlerio/actions/run-remote'."
         exit 1
       shell: bash
 
